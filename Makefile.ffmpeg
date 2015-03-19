@@ -21,22 +21,6 @@ include $(dir $(lastword $(MAKEFILE_LIST))).config.mk
 unexport CFLAGS
 unexport LDFLAGS
 
-define DOWNLOAD
-	@mkdir -p $(LIBAVDIR)/build
-	if test -z "$${TVHEADEND_FILE_CACHE}"; then \
-          wget --no-verbose -O $(2) $(1); \
-        else \
-          file=$$(basename $(2)); \
-          cp "$$TVHEADEND_FILE_CACHE/$$(file)" $(2); \
-        fi
-	@{ \
-	  sum=$$(sha1sum $(2) | cut -d ' ' -f 1); \
-	  printf "SHA1SUM test '$${sum}' == '$(3)': "; \
-	  test "y$${sum}" = "y$(3)"; \
-	}
-	@echo "OK"
-endef
-
 define UNTAR
 	tar x -C $(LIBAVDIR) -$(2)f $(LIBAVDIR)/$(1)
 endef
@@ -50,10 +34,12 @@ ELIBS           = -L$(LIBAVDIR)/build/ffmpeg/lib -ldl
 
 CONFIGURE        = PKG_CONFIG=/tmp/nobin/pkg-config ./configure
 
-FFMPEG          = ffmpeg-2.5.2
+#FFMPEG          = ffmpeg-2.5.2
+FFMPEG          = ffmpeg-snapshot
 FFMPEG_TB       = $(FFMPEG).tar.bz2
 FFMPEG_URL      = http://ffmpeg.org/releases/$(FFMPEG_TB)
-FFMPEG_SHA1     = e167475426e8edf55601e79d3367c2210baa5f11
+#FFMPEG_SHA1     = e167475426e8edf55601e79d3367c2210baa5f11
+FFMPEG_SHA1     = 2abeed336ca54f3cbab604490e37e87846b636be
 
 EXTLIBS         = libx264 libvorbis libvpx
 COMPONENTS      = avutil avformat avcodec swresample swscale avresample
@@ -94,13 +80,7 @@ build: $(LIBAVDIR)/$(FFMPEG)/.tvh_build
 # YASM
 #
 
-$(LIBAVDIR)/$(YASM)/.tvh_download:
-	$(call DOWNLOAD,$(YASM_URL),$(LIBAVDIR)/$(YASM_TB),$(YASM_SHA1))
-	$(call UNTAR,$(YASM_TB),z)
-	@touch $@
-
-$(LIBAVDIR)/$(YASM)/.tvh_build: \
-		$(LIBAVDIR)/$(YASM)/.tvh_download
+$(LIBAVDIR)/$(YASM)/.tvh_build:
 	cd $(LIBAVDIR)/$(YASM) && $(CONFIGURE) \
                 --prefix=/ffmpeg
 	DESTDIR=$(LIBAVDIR)/build \
@@ -111,14 +91,8 @@ $(LIBAVDIR)/$(YASM)/.tvh_build: \
 # libogg & libvorbis
 #
 
-$(LIBAVDIR)/$(LIBOGG)/.tvh_download:
-	$(call DOWNLOAD,$(LIBOGG_URL),$(LIBAVDIR)/$(LIBOGG_TB),$(LIBOGG_SHA1))
-	$(call UNTAR,$(LIBOGG_TB),z)
-	@touch $@
-
 $(LIBAVDIR)/$(LIBOGG)/.tvh_build: \
-		$(LIBAVDIR)/$(YASM)/.tvh_build \
-		$(LIBAVDIR)/$(LIBOGG)/.tvh_download
+		$(LIBAVDIR)/$(YASM)/.tvh_build
 	cd $(LIBAVDIR)/$(LIBOGG) && $(CONFIGURE) \
                 --prefix=/ffmpeg \
 		--enable-static \
@@ -127,14 +101,7 @@ $(LIBAVDIR)/$(LIBOGG)/.tvh_build: \
 		make -C $(LIBAVDIR)/$(LIBOGG) install
 	@touch $@
 
-$(LIBAVDIR)/$(LIBVORBIS)/.tvh_download: \
-		$(LIBAVDIR)/$(LIBOGG)/.tvh_download
-	$(call DOWNLOAD,$(LIBVORBIS_URL),$(LIBAVDIR)/$(LIBVORBIS_TB),$(LIBVORBIS_SHA1))
-	$(call UNTAR,$(LIBVORBIS_TB),z)
-	@touch $@
-
 $(LIBAVDIR)/$(LIBVORBIS)/.tvh_build: \
-		$(LIBAVDIR)/$(LIBVORBIS)/.tvh_download \
 		$(LIBAVDIR)/$(YASM)/.tvh_build \
 		$(LIBAVDIR)/$(LIBOGG)/.tvh_build
 	cd $(LIBAVDIR)/$(LIBVORBIS) && $(CONFIGURE) \
@@ -154,25 +121,12 @@ ARCH = $(shell $(CC) -dumpmachine | cut -d '-' -f 1)
 
 ifneq (,$(filter i386 i486 i586 i686 pentium,$(ARCH)))
 
-$(LIBAVDIR)/$(LIBX264)/.tvh_download:
-	@echo "***** PLEASE FIX !!!! libx264 build for i386 *****"
-	@mkdir -p $(LIBAVDIR)/$(LIBX264)
-	@touch $@
-
-$(LIBAVDIR)/$(LIBX264)/.tvh_build: $(LIBAVDIR)/$(LIBX264)/.tvh_download
+$(LIBAVDIR)/$(LIBX264)/.tvh_build:
 	@touch $@
 
 else
 
-$(LIBAVDIR)/$(LIBX264)/.tvh_download:
-	$(call DOWNLOAD,$(LIBX264_URL),$(LIBAVDIR)/$(LIBX264_TB),$(LIBX264_SHA1))
-	#rm -rf $(LIBAVDIR)/x264-snapshot-*
-	$(call UNTAR,$(LIBX264_TB),j)
-	#{ ln -sf $$(basename $(LIBAVDIR)/x264-snapshot-*) $(LIBAVDIR)/$(LIBX264); }
-	@touch $@
-
 $(LIBAVDIR)/$(LIBX264)/.tvh_build: \
-		$(LIBAVDIR)/$(LIBX264)/.tvh_download \
 		$(LIBAVDIR)/$(YASM)/.tvh_build
 	cd $(LIBAVDIR)/$(LIBX264) && $(CONFIGURE) \
 		--prefix=/ffmpeg \
@@ -194,14 +148,7 @@ endif
 # libvpx (VP8)
 #
 
-$(LIBAVDIR)/$(LIBVPX)/.tvh_download:
-	@mkdir -p $(LIBAVDIR)
-	$(call DOWNLOAD,$(LIBVPX_URL),$(LIBAVDIR)/$(LIBVPX_TB),$(LIBVPX_SHA1))
-	$(call UNTAR,$(LIBVPX_TB),j)
-	@touch $@
-
 $(LIBAVDIR)/$(LIBVPX)/.tvh_build: \
-		$(LIBAVDIR)/$(LIBVPX)/.tvh_download \
 		$(LIBAVDIR)/$(YASM)/.tvh_build
 	cd $(LIBAVDIR)/$(LIBVPX) && $(CONFIGURE) \
 		--prefix=/ffmpeg \
@@ -215,18 +162,11 @@ $(LIBAVDIR)/$(LIBVPX)/.tvh_build: \
 # FFMPEG
 #
 
-$(LIBAVDIR)/$(FFMPEG)/.tvh_download:
-	@mkdir -p $(LIBAVDIR)/build
-	$(call DOWNLOAD,$(FFMPEG_URL),$(LIBAVDIR)/$(FFMPEG_TB),$(FFMPEG_SHA1))
-	$(call UNTAR,$(FFMPEG_TB),j)
-	@touch $@
-
 $(LIBAVDIR)/$(FFMPEG)/.tvh_build: \
 		$(LIBAVDIR)/$(YASM)/.tvh_build \
 		$(LIBAVDIR)/$(LIBVORBIS)/.tvh_build \
 		$(LIBAVDIR)/$(LIBX264)/.tvh_build \
-		$(LIBAVDIR)/$(LIBVPX)/.tvh_build \
-		$(LIBAVDIR)/$(FFMPEG)/.tvh_download
+		$(LIBAVDIR)/$(LIBVPX)/.tvh_build
 	cd $(LIBAVDIR)/$(FFMPEG) && $(CONFIGURE) \
                 --prefix=/ffmpeg \
 		--disable-all \
