@@ -3,14 +3,12 @@ build.*
 
 src/version.c
 
-data/dvb-scan
-
-libav_static
-
 .cproject
 .project
 nbproject
 .settings
+
+backup
 
 *.pyc
 .*.sw[op]
@@ -34,3 +32,4 @@ rpm/test.patch
 Thumbs.db
 #Folder config file
 Desktop.ini
+/build/
