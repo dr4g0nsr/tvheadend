@@ -1,0 +1,14 @@
+prefix=/ffmpeg
+exec_prefix=${prefix}
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: libavcodec
+Description: FFmpeg codec library
+Version: 56.28.100
+Requires: libavutil >= 54.20.100
+Requires.private: 
+Conflicts:
+Libs: -L${libdir}  -lavcodec -lxcb -lxcb-shm -lxcb -lxcb-xfixes -lxcb-render -lxcb-shape -lxcb -lxcb-shape -lxcb -lX11 -lx264 -lvpx -lvpx -lvorbisenc -lvorbis -logg -lm -lz -pthread -L/opt/development/tvheadend/libav_static/build/ffmpeg/lib -ldl
+Libs.private: 
+Cflags: -I${includedir}
