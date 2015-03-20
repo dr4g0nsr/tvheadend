@@ -1113,7 +1113,10 @@ transcoder_stream_video(transcoder_t *t, transcoder_stream_t *ts, th_pkt_t *pkt)
       octx->qcompress = 0.6;
 
       // Default = "medium". We gain more encoding speed compared to the loss of quality when lowering it _slightly_.
-      av_dict_set(&opts, "preset",  "faster", 0);
+      //av_dict_set(&opts, "preset",  "faster", 0);
+      av_dict_set(&opts, "preset",  t->t_props.tp_x264preset, 0);
+      tvhinfo("transcode", "%04X: x264 preset set to %s",shortid(t), t->t_props.tp_x264preset);
+      
       // Use main profile instead of the standard "baseline", we are aiming for better quality.
       // Older devices (iPhone <4, Android <4) only supports baseline. Chromecast only supports >=4.1...
       av_dict_set(&opts, "profile", "main", 0); // L3.0
@@ -1815,6 +1818,7 @@ transcoder_set_properties(streaming_target_t *st,
   strncpy(tp->tp_vcodec, props->tp_vcodec, sizeof(tp->tp_vcodec)-1);
   strncpy(tp->tp_acodec, props->tp_acodec, sizeof(tp->tp_acodec)-1);
   strncpy(tp->tp_scodec, props->tp_scodec, sizeof(tp->tp_scodec)-1);
+  strncpy(tp->tp_x264preset, props->tp_x264preset, sizeof(tp->tp_x264preset)-1);
   tp->tp_channels   = props->tp_channels;
   tp->tp_vbitrate   = props->tp_vbitrate;
   tp->tp_abitrate   = props->tp_abitrate;
