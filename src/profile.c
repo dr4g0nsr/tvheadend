@@ -1128,7 +1128,7 @@ static int profile_transcode_experimental_codecs = 1;
 typedef struct profile_transcode {
     profile_t;
     int pro_mc;
-    
+
     uint32_t pro_resolution;
     uint32_t pro_channels;
     uint32_t pro_vbitrate;
@@ -1137,7 +1137,7 @@ typedef struct profile_transcode {
     uint32_t pro_quantizermin;
     uint32_t pro_quantizermax;
     uint32_t pro_threads;
-    
+
     char *pro_language;
     char *pro_vcodec;
     char *pro_mresolution;
@@ -1625,7 +1625,7 @@ const idclass_t profile_transcode_class = {
         {
             .type = PT_U32,
             .id = "resolution",
-            .name = "Auto Height Resolution > 240 (0=same as source)",
+            .name = "Auto Height Resolution (0=use manual)",
             .off = offsetof(profile_transcode_t, pro_resolution),
             .def.u32 = 0,
         },
@@ -1722,7 +1722,7 @@ const idclass_t profile_transcode_class = {
             .off = offsetof(profile_transcode_t, pro_quantizermax),
             .def.u32 = 0,
         },
-{
+        {
             .type = PT_U32,
             .id = "threads",
             .name = "Threads encode limit (0=auto detect)",
@@ -1765,7 +1765,7 @@ const idclass_t profile_transcode_class = {
 
 static int
 profile_transcode_resolution(profile_transcode_t *pro) {
-    return pro->pro_resolution >= 240 ? pro->pro_resolution : 240;
+    return pro->pro_resolution >= 240 || pro->pro_resolution == 0 ? pro->pro_resolution : 240;
 }
 
 static int
@@ -1826,22 +1826,22 @@ profile_transcode_work(profile_chain_t *prch,
     strncpy(props.tp_vcodec, pro->pro_vcodec ? : "", sizeof (props.tp_vcodec) - 1);
     strncpy(props.tp_acodec, pro->pro_acodec ? : "", sizeof (props.tp_acodec) - 1);
     strncpy(props.tp_scodec, pro->pro_scodec ? : "", sizeof (props.tp_scodec) - 1);
-    
+
     strncpy(props.tp_mresolution, pro->pro_mresolution ? : "", sizeof (props.tp_mresolution) - 1);
     strncpy(props.tp_interlace, pro->pro_interlace ? : "", sizeof (props.tp_interlace) - 1);
     props.tp_resolution = profile_transcode_resolution(pro);
     props.tp_channels = pro->pro_channels;
-    
+
     strncpy(props.tp_x264preset, pro->pro_x264preset ? : "", sizeof (props.tp_x264preset) - 1);
     strncpy(props.tp_x264profile, pro->pro_x264profile ? : "", sizeof (props.tp_x264profile) - 1);
     strncpy(props.tp_x264level, pro->pro_x264level ? : "", sizeof (props.tp_x264level) - 1);
     strncpy(props.tp_x264tune, pro->pro_x264tune ? : "", sizeof (props.tp_x264tune) - 1);
-    
+
     props.tp_quantizermin = pro->pro_quantizermin;
     props.tp_quantizermax = pro->pro_quantizermax;
     props.tp_keyframe = pro->pro_keyframe;
     props.tp_threads = pro->pro_threads;
-    
+
     props.tp_vbitrate = profile_transcode_vbitrate(pro);
     props.tp_abitrate = profile_transcode_abitrate(pro);
     strncpy(props.tp_language, pro->pro_language ? : "", 3);
