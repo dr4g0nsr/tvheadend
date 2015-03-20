@@ -1612,17 +1612,29 @@ transcoder_init_video(transcoder_t *t, streaming_start_component_t *ssc) {
 
     LIST_INSERT_HEAD(&t->t_stream_list, (transcoder_stream_t*) vs, ts_link);
 
-
+    // height set manually
     if (tp->tp_resolution > 0) {
         vs->vid_height = MIN(tp->tp_resolution, ssc->ssc_height);
         vs->vid_height += vs->vid_height & 1; /* Must be even */
-
         double aspect = (double) ssc->ssc_width / ssc->ssc_height;
         vs->vid_width = vs->vid_height * aspect;
         vs->vid_width += vs->vid_width & 1; /* Must be even */
     } else {
-        vs->vid_height = ssc->ssc_height;
-        vs->vid_width = ssc->ssc_width;
+        if (strncmp(t->t_props.tp_mresolution, "default", 7) == 0 || sizeof (t->t_props.tp_mresolution) == 0) {
+            vs->vid_height = ssc->ssc_height;
+            vs->vid_width = ssc->ssc_width;
+        } else {
+            char *swidth;
+            char *sheight;
+            swidth = strtok(t->t_props.tp_mresolution, "x");
+            sheight = strtok(NULL, "x");
+            vs->vid_width = atoi(swidth);
+            vs->vid_height = atoi(sheight);
+            if (vs->vid_height == 0 || vs->vid_width == 0) { // fallback
+                vs->vid_height = ssc->ssc_height;
+                vs->vid_width = ssc->ssc_width;
+            }
+        }
     }
 
     tvhinfo("transcode", "%04X: %d:%s %dx%d ==> %s %dx%d (%s)",
