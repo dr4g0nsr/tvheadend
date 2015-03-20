@@ -1087,10 +1087,8 @@ transcoder_stream_video(transcoder_t *t, transcoder_stream_t *ts, th_pkt_t *pkt)
                 // Recommended default: -qcomp 0.60
                 octx->qcompress = 0.6;
 
-                //tvhinfo("transcode", "%04X: x264 preset set to %s", shortid(t), t->t_props.tp_x264preset);
-
                 // Set Preset
-                if (strncmp(t->t_props.tp_x264preset, "default", 7)==0 || sizeof(t->t_props.tp_x264preset)==0) {
+                if (strncmp(t->t_props.tp_x264preset, "default", 7) == 0 || sizeof (t->t_props.tp_x264preset) == 0) {
                     //if (strncmp("default", t->t_props.tp_x264preset, 7)) {
                     av_dict_set(&opts, "preset", "faster", 0);
                     tvhinfo("transcode", "%04X: x264 preset set to default", shortid(t));
@@ -1098,18 +1096,18 @@ transcoder_stream_video(transcoder_t *t, transcoder_stream_t *ts, th_pkt_t *pkt)
                     av_dict_set(&opts, "preset", t->t_props.tp_x264preset, 0);
                     tvhinfo("transcode", "%04X: x264 preset set to %s", shortid(t), t->t_props.tp_x264preset);
                 }
-                
+
                 // Set Profile
-                if (strncmp(t->t_props.tp_x264profile, "default", 7)==0 || sizeof(t->t_props.tp_x264profile)==0) {
+                if (strncmp(t->t_props.tp_x264profile, "default", 7) == 0 || sizeof (t->t_props.tp_x264profile) == 0) {
                     av_dict_set(&opts, "profile", "main", 0);
                     tvhinfo("transcode", "%04X: x264 profile set to default", shortid(t));
                 } else {
-                    av_dict_set(&opts, "preset", t->t_props.tp_x264profile, 0);
+                    av_dict_set(&opts, "profile", t->t_props.tp_x264profile, 0);
                     tvhinfo("transcode", "%04X: x264 profile set to %s", shortid(t), t->t_props.tp_x264profile);
                 }
 
                 // Set Level
-                if (strncmp(t->t_props.tp_x264level, "default", 7)==0 || sizeof(t->t_props.tp_x264level)==0) {
+                if (strncmp(t->t_props.tp_x264level, "default", 7) == 0 || sizeof (t->t_props.tp_x264level) == 0) {
                     av_dict_set(&opts, "level", "3.0", 0);
                     tvhinfo("transcode", "%04X: x264 level set to default", shortid(t));
                 } else {
@@ -1118,7 +1116,7 @@ transcoder_stream_video(transcoder_t *t, transcoder_stream_t *ts, th_pkt_t *pkt)
                 }
 
                 // Set Tune
-                if (strncmp(t->t_props.tp_x264tune, "default", 7)==0 || sizeof(t->t_props.tp_x264tune)==0) {
+                if (strncmp(t->t_props.tp_x264tune, "default", 7) == 0 || sizeof (t->t_props.tp_x264tune) == 0) {
                     av_dict_set(&opts, "tune", "zerolatency", 0);
                     tvhinfo("transcode", "%04X: x264 tune set to default", shortid(t));
                 } else {
@@ -1126,8 +1124,8 @@ transcoder_stream_video(transcoder_t *t, transcoder_stream_t *ts, th_pkt_t *pkt)
                     tvhinfo("transcode", "%04X: x264 tune set to %s", shortid(t), t->t_props.tp_x264tune);
                 }
 
-                // Bitrate/quantizer
-                if (t->t_props.tp_vbitrate == 0) {
+                // Bitrate/quantizer, choose which to use and what values
+                if (t->t_props.tp_vbitrate == 0) { // CRF MODE
                     if (t->t_props.tp_quantizermin == 0 && t->t_props.tp_quantizermax == 0) { // all to default
                         t->t_props.tp_quantizermin = 10;
                         t->t_props.tp_quantizermax = 30;
@@ -1146,13 +1144,18 @@ transcoder_stream_video(transcoder_t *t, transcoder_stream_t *ts, th_pkt_t *pkt)
                     }
                     octx->qmin = t->t_props.tp_quantizermin;
                     octx->qmax = t->t_props.tp_quantizermax;
-                } else {
+                    tvhinfo("transcode", "%04X: x264 quantizer set to %ui %ui", shortid(t), octx->qmin, octx->qmax);
+                } else { // CBR mode
                     octx->rc_max_rate = t->t_props.tp_vbitrate * 1000; // convert bitrate to kilo
-                    octx->bit_rate = ceil(octx->rc_max_rate / 1.15); // max bitrate is 15% higher than bitrate
-                    octx->rc_buffer_size = 8 * 1024 * 224; // buffer size
+                    octx->bit_rate = ceil(octx->rc_max_rate / 1.20); // bitrate is 20% less than maximum bitrate
+                    octx->rc_buffer_size = 8 * 1024 * 224; // buffer size 1,8MB
+                    tvhinfo("transcode", "%04X: x264 bitrate set to %ui - %ui", shortid(t), octx->rc_max_rate, octx->bit_rate);
                 }
-                
-                
+
+                // Set keyframe, override default of 25 (every 1 sec if 25fps)
+                if (t->t_props.tp_keyframe > 0) {
+                    octx->gop_size = t->t_props.tp_keyframe;
+                }
 
                 // Default = "medium". We gain more encoding speed compared to the loss of quality when lowering it _slightly_.
                 //av_dict_set(&opts, "preset",  "faster", 0);
@@ -1166,26 +1169,26 @@ transcoder_stream_video(transcoder_t *t, transcoder_stream_t *ts, th_pkt_t *pkt)
                 //if (octx->height >= 720 && t->t_props.tp_resolution >= 720) {
                 //    av_dict_set(&opts, "profile", "high", 0); // L3.1
                 //}
+                /*
+                                // Default "auto" CRF settings. Aimed for quality without being too agressive.
+                                if (t->t_props.tp_vbitrate == 0) {
+                                    octx->qmin = 10;
+                                    octx->qmax = 30;
+                                }
+                
+                                // Stream profile vbitrate 1-63 is used for user specified qmin quantizer (CRF mode).
+                                if (t->t_props.tp_vbitrate > 0 && t->t_props.tp_vbitrate < 64) {
+                                    octx->qmin = t->t_props.tp_vbitrate; // qmax = 51 in all default profiles, let's stick with it for now.
+                                }
 
-                // Default "auto" CRF settings. Aimed for quality without being too agressive.
-                if (t->t_props.tp_vbitrate == 0) {
-                    octx->qmin = 10;
-                    octx->qmax = 30;
-                }
+                                if (t->t_props.tp_vbitrate >= 64) { // Bitrate limited encoding (CBR mode).
+                                    octx->rc_max_rate = t->t_props.tp_vbitrate * 1000;
+                                    octx->bit_rate = ceil(octx->rc_max_rate / 1.15);
+                                }
 
-                // Stream profile vbitrate 1-63 is used for user specified qmin quantizer (CRF mode).
-                if (t->t_props.tp_vbitrate > 0 && t->t_props.tp_vbitrate < 64) {
-                    octx->qmin = t->t_props.tp_vbitrate; // qmax = 51 in all default profiles, let's stick with it for now.
-                }
-
-                if (t->t_props.tp_vbitrate >= 64) { // Bitrate limited encoding (CBR mode).
-                    octx->rc_max_rate = t->t_props.tp_vbitrate * 1000;
-                    octx->bit_rate = ceil(octx->rc_max_rate / 1.15);
-                }
-
-                if (octx->rc_max_rate > 0)
-                    octx->rc_buffer_size = 8 * 1024 * 224;
-
+                                if (octx->rc_max_rate > 0)
+                                    octx->rc_buffer_size = 8 * 1024 * 224;
+                 */
                 break;
 
             default:
@@ -1829,7 +1832,20 @@ transcoder_set_properties(streaming_target_t *st,
     strncpy(tp->tp_vcodec, props->tp_vcodec, sizeof (tp->tp_vcodec) - 1);
     strncpy(tp->tp_acodec, props->tp_acodec, sizeof (tp->tp_acodec) - 1);
     strncpy(tp->tp_scodec, props->tp_scodec, sizeof (tp->tp_scodec) - 1);
+
     strncpy(tp->tp_x264preset, props->tp_x264preset, sizeof (tp->tp_x264preset) - 1);
+    strncpy(tp->tp_x264profile, props->tp_x264profile, sizeof (tp->tp_x264profile) - 1);
+    strncpy(tp->tp_x264level, props->tp_x264level, sizeof (tp->tp_x264level) - 1);
+    strncpy(tp->tp_x264tune, props->tp_x264tune, sizeof (tp->tp_x264tune) - 1);
+
+    strncpy(tp->tp_mresolution, props->tp_mresolution, sizeof (tp->tp_mresolution) - 1);
+    strncpy(tp->tp_interlace, props->tp_interlace, sizeof (tp->tp_interlace) - 1);
+
+    tp->tp_quantizermin = props->tp_quantizermin;
+    tp->tp_quantizermax = props->tp_quantizermax;
+    tp->tp_keyframe = props->tp_keyframe;
+    tp->tp_threads = props->tp_threads;
+
     tp->tp_channels = props->tp_channels;
     tp->tp_vbitrate = props->tp_vbitrate;
     tp->tp_abitrate = props->tp_abitrate;
