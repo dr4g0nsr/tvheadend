@@ -1625,7 +1625,7 @@ const idclass_t profile_transcode_class = {
         {
             .type = PT_U32,
             .id = "resolution",
-            .name = "Auto Height Resolution (0=same as source)",
+            .name = "Auto Height Resolution > 240 (0=same as source)",
             .off = offsetof(profile_transcode_t, pro_resolution),
             .def.u32 = 0,
         },
