@@ -1128,12 +1128,20 @@ static int profile_transcode_experimental_codecs = 1;
 typedef struct profile_transcode {
     profile_t;
     int pro_mc;
+    
     uint32_t pro_resolution;
     uint32_t pro_channels;
     uint32_t pro_vbitrate;
     uint32_t pro_abitrate;
+    uint32_t pro_keyframe;
+    uint32_t pro_quantizermin;
+    uint32_t pro_quantizermax;
+    uint32_t pro_threads;
+    
     char *pro_language;
     char *pro_vcodec;
+    char *pro_mresolution;
+    char *pro_interlace;
     char *pro_x264preset;
     char *pro_x264profile;
     char *pro_x264level;
@@ -1152,6 +1160,24 @@ profile_class_mc_list(void *o) {
         { "MPEG-PS (DVD) /av-lib", MC_MPEGPS},
         { "Matroska (mkv) /av-lib", MC_AVMATROSKA},
         { "WEBM /av-lib", MC_AVWEBM},
+    };
+    return strtab2htsmsg(tab);
+}
+
+static htsmsg_t *
+profile_class_keyframe_list(void *o) {
+    static const struct strtab tab[] = {
+        { "Disabled (same as source)", 0},
+        { "10", 10},
+        { "15", 15},
+        { "18", 18},
+        { "20", 20},
+        { "23", 23},
+        { "24", 24},
+        { "25", 25},
+        { "30", 30},
+        { "50", 50},
+        { "60", 60}
     };
     return strtab2htsmsg(tab);
 }
@@ -1381,6 +1407,142 @@ profile_class_x264level_list(void *o) {
 }
 
 static htsmsg_t *
+profile_class_mresolution_list(void *o) {
+    htsmsg_t *l = htsmsg_create_list(), *e;
+
+    e = htsmsg_create_map();
+    htsmsg_add_str(e, "key", "default");
+    htsmsg_add_str(e, "val", "Default");
+    htsmsg_add_msg(l, NULL, e);
+
+    e = htsmsg_create_map();
+    htsmsg_add_str(e, "key", "160x120");
+    htsmsg_add_str(e, "val", "160x120 (4:3) (QQVGA)");
+    htsmsg_add_msg(l, NULL, e);
+
+    e = htsmsg_create_map();
+    htsmsg_add_str(e, "key", "320x200");
+    htsmsg_add_str(e, "val", "320x200 (4:3) (MCGA)");
+    htsmsg_add_msg(l, NULL, e);
+
+    e = htsmsg_create_map();
+    htsmsg_add_str(e, "key", "320x240");
+    htsmsg_add_str(e, "val", "320x240 (4:3) (QVGA)");
+    htsmsg_add_msg(l, NULL, e);
+
+    e = htsmsg_create_map();
+    htsmsg_add_str(e, "key", "640x360");
+    htsmsg_add_str(e, "val", "640x360 (16:9) (nHD)");
+    htsmsg_add_msg(l, NULL, e);
+
+    e = htsmsg_create_map();
+    htsmsg_add_str(e, "key", "640x400");
+    htsmsg_add_str(e, "val", "640x400 (8:5) (NTSC Hires interlaced)");
+    htsmsg_add_msg(l, NULL, e);
+
+    e = htsmsg_create_map();
+    htsmsg_add_str(e, "key", "640x480");
+    htsmsg_add_str(e, "val", "640x480 (4:3) (VGA)");
+    htsmsg_add_msg(l, NULL, e);
+
+    e = htsmsg_create_map();
+    htsmsg_add_str(e, "key", "720x576");
+    htsmsg_add_str(e, "val", "720x576 (5:4) (PAL)");
+    htsmsg_add_msg(l, NULL, e);
+
+    e = htsmsg_create_map();
+    htsmsg_add_str(e, "key", "768x480");
+    htsmsg_add_str(e, "val", "768x480 (8:5) (PAL Hi)");
+    htsmsg_add_msg(l, NULL, e);
+
+    e = htsmsg_create_map();
+    htsmsg_add_str(e, "key", "768x576");
+    htsmsg_add_str(e, "val", "768x576 (4:3) (Full SD)");
+    htsmsg_add_msg(l, NULL, e);
+
+    e = htsmsg_create_map();
+    htsmsg_add_str(e, "key", "960x540");
+    htsmsg_add_str(e, "val", "960x540 (16:9) (Quarter FHD)");
+    htsmsg_add_msg(l, NULL, e);
+
+    e = htsmsg_create_map();
+    htsmsg_add_str(e, "key", "1280x720");
+    htsmsg_add_str(e, "val", "1280x720 (16:9) (WXGA-H)");
+    htsmsg_add_msg(l, NULL, e);
+
+    e = htsmsg_create_map();
+    htsmsg_add_str(e, "key", "1280x800");
+    htsmsg_add_str(e, "val", "1280x800 (8:5) (WXGA)");
+    htsmsg_add_msg(l, NULL, e);
+
+    e = htsmsg_create_map();
+    htsmsg_add_str(e, "key", "1366x768");
+    htsmsg_add_str(e, "val", "1366x768 (683:384) (HD ready)");
+    htsmsg_add_msg(l, NULL, e);
+
+    e = htsmsg_create_map();
+    htsmsg_add_str(e, "key", "1440x900");
+    htsmsg_add_str(e, "val", "1440x900 (8:5) (WSXGA)");
+    htsmsg_add_msg(l, NULL, e);
+
+    e = htsmsg_create_map();
+    htsmsg_add_str(e, "key", "1440x1080");
+    htsmsg_add_str(e, "val", "1440x1080 (4:3) (HDV 1080i)");
+    htsmsg_add_msg(l, NULL, e);
+
+    e = htsmsg_create_map();
+    htsmsg_add_str(e, "key", "1680x1050");
+    htsmsg_add_str(e, "val", "1680x1050 (8:5) (WSXGA+)");
+    htsmsg_add_msg(l, NULL, e);
+
+    e = htsmsg_create_map();
+    htsmsg_add_str(e, "key", "1920x1080");
+    htsmsg_add_str(e, "val", "1920x1080 (16:9) (FHD)");
+    htsmsg_add_msg(l, NULL, e);
+
+    e = htsmsg_create_map();
+    htsmsg_add_str(e, "key", "2048x1152");
+    htsmsg_add_str(e, "val", "2048x1152 (16:9) (2K)");
+    htsmsg_add_msg(l, NULL, e);
+
+    e = htsmsg_create_map();
+    htsmsg_add_str(e, "key", "3840x2160");
+    htsmsg_add_str(e, "val", "3840x2160 (16:9) (2160p)");
+    htsmsg_add_msg(l, NULL, e);
+
+    e = htsmsg_create_map();
+    htsmsg_add_str(e, "key", "4096x2304");
+    htsmsg_add_str(e, "val", "4096x2304 (16:9) (4K)");
+    htsmsg_add_msg(l, NULL, e);
+
+    return l;
+}
+
+static htsmsg_t *
+profile_class_interlace_list(void *o) {
+    htsmsg_t *l = htsmsg_create_list(), *e;
+
+    e = htsmsg_create_map();
+    htsmsg_add_str(e, "key", "default");
+    htsmsg_add_str(e, "val", "Default");
+    htsmsg_add_msg(l, NULL, e);
+    e = htsmsg_create_map();
+    htsmsg_add_str(e, "key", "disabled");
+    htsmsg_add_str(e, "val", "Disabled (no interlace)");
+    htsmsg_add_msg(l, NULL, e);
+    e = htsmsg_create_map();
+    htsmsg_add_str(e, "key", "tff");
+    htsmsg_add_str(e, "val", "Top Field First");
+    htsmsg_add_msg(l, NULL, e);
+    e = htsmsg_create_map();
+    htsmsg_add_str(e, "key", "bff");
+    htsmsg_add_str(e, "val", "Bottom Field First");
+    htsmsg_add_msg(l, NULL, e);
+
+    return l;
+}
+
+static htsmsg_t *
 profile_class_x264profile_list(void *o) {
     htsmsg_t *l = htsmsg_create_list(), *e;
 
@@ -1463,9 +1625,33 @@ const idclass_t profile_transcode_class = {
         {
             .type = PT_U32,
             .id = "resolution",
-            .name = "Auto Resolution",
+            .name = "Auto Height Resolution (0=same as source)",
             .off = offsetof(profile_transcode_t, pro_resolution),
-            .def.u32 = 384,
+            .def.u32 = 0,
+        },
+        {
+            .type = PT_STR,
+            .id = "mresolution",
+            .name = "Manual Resolution",
+            .off = offsetof(profile_transcode_t, pro_mresolution),
+            .def.s = "Default",
+            .list = profile_class_mresolution_list,
+        },
+        {
+            .type = PT_STR,
+            .id = "interlace",
+            .name = "Interlace",
+            .off = offsetof(profile_transcode_t, pro_interlace),
+            .def.s = "Default",
+            .list = profile_class_interlace_list,
+        },
+        {
+            .type = PT_U32,
+            .id = "keyframe",
+            .name = "Keyframe",
+            .off = offsetof(profile_transcode_t, pro_keyframe),
+            .def.u32 = 0,
+            .list = profile_class_keyframe_list,
         },
         {
             .type = PT_U32,
@@ -1521,6 +1707,27 @@ const idclass_t profile_transcode_class = {
             .off = offsetof(profile_transcode_t, pro_x264tune),
             .def.s = "Default",
             .list = profile_class_x264tune_list,
+        },
+        {
+            .type = PT_U32,
+            .id = "quantizer_min",
+            .name = "Quantizer Minimum (0=Use bitrate limit)",
+            .off = offsetof(profile_transcode_t, pro_quantizermin),
+            .def.u32 = 0,
+        },
+        {
+            .type = PT_U32,
+            .id = "quantizer_max",
+            .name = "Quantizer Maximum (0=Use bitrate limit)",
+            .off = offsetof(profile_transcode_t, pro_quantizermax),
+            .def.u32 = 0,
+        },
+{
+            .type = PT_U32,
+            .id = "threads",
+            .name = "Threads encode limit (0=auto detect)",
+            .off = offsetof(profile_transcode_t, pro_threads),
+            .def.u32 = 0,
         },
         {
             .type = PT_U32,
@@ -1619,9 +1826,22 @@ profile_transcode_work(profile_chain_t *prch,
     strncpy(props.tp_vcodec, pro->pro_vcodec ? : "", sizeof (props.tp_vcodec) - 1);
     strncpy(props.tp_acodec, pro->pro_acodec ? : "", sizeof (props.tp_acodec) - 1);
     strncpy(props.tp_scodec, pro->pro_scodec ? : "", sizeof (props.tp_scodec) - 1);
-    strncpy(props.tp_x264preset, pro->pro_x264preset ? : "", sizeof (props.tp_x264preset) - 1);
+    
+    strncpy(props.tp_mresolution, pro->pro_mresolution ? : "", sizeof (props.tp_mresolution) - 1);
+    strncpy(props.tp_interlace, pro->pro_interlace ? : "", sizeof (props.tp_interlace) - 1);
     props.tp_resolution = profile_transcode_resolution(pro);
     props.tp_channels = pro->pro_channels;
+    
+    strncpy(props.tp_x264preset, pro->pro_x264preset ? : "", sizeof (props.tp_x264preset) - 1);
+    strncpy(props.tp_x264profile, pro->pro_x264profile ? : "", sizeof (props.tp_x264profile) - 1);
+    strncpy(props.tp_x264level, pro->pro_x264level ? : "", sizeof (props.tp_x264level) - 1);
+    strncpy(props.tp_x264tune, pro->pro_x264tune ? : "", sizeof (props.tp_x264tune) - 1);
+    
+    props.tp_quantizermin = pro->pro_quantizermin;
+    props.tp_quantizermax = pro->pro_quantizermax;
+    props.tp_keyframe = pro->pro_keyframe;
+    props.tp_threads = pro->pro_threads;
+    
     props.tp_vbitrate = profile_transcode_vbitrate(pro);
     props.tp_abitrate = profile_transcode_abitrate(pro);
     strncpy(props.tp_language, pro->pro_language ? : "", 3);
