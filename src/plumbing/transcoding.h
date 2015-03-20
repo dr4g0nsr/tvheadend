@@ -24,10 +24,22 @@ typedef struct transcoder_prop {
   char     tp_vcodec[32];
   char     tp_acodec[32];
   char     tp_scodec[32];
+  
+  char     tp_mresolution[32];
+  char     tp_interlace[32];
+  
   char     tp_x264preset[32];
+  char     tp_x264profile[32];
+  char     tp_x264level[32];
+  char     tp_x264tune[32];
 
-  int8_t   tp_channels;
+  int32_t  tp_keyframe;
+  int32_t  tp_quantizermin;
+  int32_t  tp_quantizermax;
+  int32_t  tp_threads;
   int32_t  tp_vbitrate;
+  
+  int8_t   tp_channels;
   int32_t  tp_abitrate;
   char     tp_language[4];
   int32_t  tp_resolution;
