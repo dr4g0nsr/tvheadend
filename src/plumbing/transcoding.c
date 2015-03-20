@@ -1087,17 +1087,20 @@ transcoder_stream_video(transcoder_t *t, transcoder_stream_t *ts, th_pkt_t *pkt)
                 // Recommended default: -qcomp 0.60
                 octx->qcompress = 0.6;
 
+                //tvhinfo("transcode", "%04X: x264 preset set to %s", shortid(t), t->t_props.tp_x264preset);
+
                 // Set Preset
-                if (strcmp(t->t_props.tp_x264preset, "default") || strcmp(t->t_props.tp_x264preset, "")) {
+                if (strncmp(t->t_props.tp_x264preset, "default", 7)==0 || sizeof(t->t_props.tp_x264preset)==0) {
+                    //if (strncmp("default", t->t_props.tp_x264preset, 7)) {
                     av_dict_set(&opts, "preset", "faster", 0);
                     tvhinfo("transcode", "%04X: x264 preset set to default", shortid(t));
                 } else {
                     av_dict_set(&opts, "preset", t->t_props.tp_x264preset, 0);
                     tvhinfo("transcode", "%04X: x264 preset set to %s", shortid(t), t->t_props.tp_x264preset);
                 }
-
+                
                 // Set Profile
-                if (strcmp(t->t_props.tp_x264profile, "default") || strcmp(t->t_props.tp_x264profile, "")) {
+                if (strncmp(t->t_props.tp_x264profile, "default", 7)==0 || sizeof(t->t_props.tp_x264profile)==0) {
                     av_dict_set(&opts, "profile", "main", 0);
                     tvhinfo("transcode", "%04X: x264 profile set to default", shortid(t));
                 } else {
@@ -1106,7 +1109,7 @@ transcoder_stream_video(transcoder_t *t, transcoder_stream_t *ts, th_pkt_t *pkt)
                 }
 
                 // Set Level
-                if (strcmp(t->t_props.tp_x264level, "default") || strcmp(t->t_props.tp_x264level, "")) {
+                if (strncmp(t->t_props.tp_x264level, "default", 7)==0 || sizeof(t->t_props.tp_x264level)==0) {
                     av_dict_set(&opts, "level", "3.0", 0);
                     tvhinfo("transcode", "%04X: x264 level set to default", shortid(t));
                 } else {
@@ -1115,7 +1118,7 @@ transcoder_stream_video(transcoder_t *t, transcoder_stream_t *ts, th_pkt_t *pkt)
                 }
 
                 // Set Tune
-                if (strcmp(t->t_props.tp_x264tune, "default") || strcmp(t->t_props.tp_x264tune, "")) {
+                if (strncmp(t->t_props.tp_x264tune, "default", 7)==0 || sizeof(t->t_props.tp_x264tune)==0) {
                     av_dict_set(&opts, "tune", "zerolatency", 0);
                     tvhinfo("transcode", "%04X: x264 tune set to default", shortid(t));
                 } else {
@@ -1126,8 +1129,8 @@ transcoder_stream_video(transcoder_t *t, transcoder_stream_t *ts, th_pkt_t *pkt)
                 // Bitrate/quantizer
                 if (t->t_props.tp_vbitrate == 0) {
                     if (t->t_props.tp_quantizermin == 0 && t->t_props.tp_quantizermax == 0) { // all to default
-                        t->t_props.tp_quantizermin=10;
-                        t->t_props.tp_quantizermax=30;
+                        t->t_props.tp_quantizermin = 10;
+                        t->t_props.tp_quantizermax = 30;
                     } else
                         if (t->t_props.tp_quantizermin > 0 && t->t_props.tp_quantizermax == 0) { // only min set
                         if (t->t_props.tp_quantizermin > 41) { // cap to 41 so max will be 51 (maximum)
@@ -1148,6 +1151,8 @@ transcoder_stream_video(transcoder_t *t, transcoder_stream_t *ts, th_pkt_t *pkt)
                     octx->bit_rate = ceil(octx->rc_max_rate / 1.15); // max bitrate is 15% higher than bitrate
                     octx->rc_buffer_size = 8 * 1024 * 224; // buffer size
                 }
+                
+                
 
                 // Default = "medium". We gain more encoding speed compared to the loss of quality when lowering it _slightly_.
                 //av_dict_set(&opts, "preset",  "faster", 0);
