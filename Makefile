@@ -361,7 +361,7 @@ BUNDLES-yes               += docs/html docs/docresources src/webui/static
 BUNDLES-yes               += data/conf
 BUNDLES-${CONFIG_DVBSCAN} += data/dvb-scan
 BUNDLES                    = $(BUNDLES-yes)
-ALL-$(CONFIG_DVBSCAN)     += check_dvb_scan
+#ALL-$(CONFIG_DVBSCAN)     += check_dvb_scan
 
 #
 # Add-on modules
@@ -447,7 +447,7 @@ $(BUILDDIR)/bundle.o: $(BUILDDIR)/bundle.c
 	@mkdir -p $(dir $@)
 	$(CC) -I${ROOTDIR}/src -c -o $@ $<
 
-$(BUILDDIR)/bundle.c: check_dvb_scan
+$(BUILDDIR)/bundle.c: # check_dvb_scan
 	@mkdir -p $(dir $@)
 	$(MKBUNDLE) -o $@ -d ${BUILDDIR}/bundle.d $(BUNDLE_FLAGS) $(BUNDLES:%=$(ROOTDIR)/%)
 
@@ -486,6 +486,9 @@ $(ROOTDIR)/data/dvb-scan/.stamp:
 
 .PHONY: check_dvb_scan
 check_dvb_scan: $(ROOTDIR)/data/dvb-scan/.stamp
+	
+.PHONY: generate_dvbs
+generate_dvbs: $(ROOTDIR)/data/dvb-scan/dvb-s/.stamp
 
 # dvb-s / enigma2 / satellites.xml
 $(ROOTDIR)/data/dvb-scan/dvb-s/.stamp: $(ROOTDIR)/data/satellites.xml \
