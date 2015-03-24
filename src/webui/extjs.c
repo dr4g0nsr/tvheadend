@@ -753,6 +753,6 @@ extjs_start(void)
   http_path_add("/tvhlog",           NULL, extjs_tvhlog,           ACCESS_ADMIN);
 
 #if ENABLE_V4L
-  extjs_start_v4l();
+  //extjs_start_v4l();
 #endif
 }
