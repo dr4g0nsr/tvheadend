@@ -923,6 +923,8 @@ transcoder_stream_video(transcoder_t *t, transcoder_stream_t *ts, th_pkt_t *pkt)
     video_stream_t *vs = (video_stream_t*) ts;
     streaming_message_t *sm;
     th_pkt_t *pkt2;
+    const uint8_t * const* dec_frame;
+    int dec_frame_linesize[AV_NUM_DATA_POINTERS];
 
     av_init_packet(&packet);
     av_init_packet(&packet2);
@@ -1012,6 +1014,7 @@ transcoder_stream_video(transcoder_t *t, transcoder_stream_t *ts, th_pkt_t *pkt)
 #else
         octx->time_base = ictx->time_base;
 #endif
+        deint = 0;
 
         switch (ts->ts_type) {
             case SCT_MPEG2VIDEO:
@@ -1198,30 +1201,10 @@ transcoder_stream_video(transcoder_t *t, transcoder_stream_t *ts, th_pkt_t *pkt)
         octx->codec_id = ocodec->id;
 
         if (avcodec_open2(octx, ocodec, &opts) < 0) {
-            tvherror("transcode", "%04X: Unable to open %s encoder",
-                    shortid(t), ocodec->name);
+            tvherror("transcode", "%04X: Unable to open %s encoder", shortid(t), ocodec->name);
             transcoder_stream_invalidate(ts);
             goto cleanup;
         }
-    }
-
-    len = avpicture_get_size(ictx->pix_fmt, ictx->width, ictx->height);
-    deint = av_malloc(len);
-
-    avpicture_fill(&deint_pic,
-            deint,
-            ictx->pix_fmt,
-            ictx->width,
-            ictx->height);
-
-    if (avpicture_deinterlace(&deint_pic,
-            (AVPicture *) vs->vid_dec_frame,
-            ictx->pix_fmt,
-            ictx->width,
-            ictx->height) < 0) {
-        tvherror("transcode", "%04X: Cannot deinterlace frame", shortid(t));
-        transcoder_stream_invalidate(ts);
-        goto cleanup;
     }
 
     len = avpicture_get_size(octx->pix_fmt, octx->width, octx->height);
@@ -1246,16 +1229,61 @@ transcoder_stream_video(transcoder_t *t, transcoder_stream_t *ts, th_pkt_t *pkt)
             NULL,
             NULL);
 
-    if (sws_scale(vs->vid_scaler,
-            (const uint8_t * const*) deint_pic.data,
-            deint_pic.linesize,
-            0,
-            ictx->height,
-            vs->vid_enc_frame->data,
-            vs->vid_enc_frame->linesize) < 0) {
-        tvherror("transcode", "%04X: Cannot scale frame", shortid(t));
-        transcoder_stream_invalidate(ts);
-        goto cleanup;
+    // Set Interlace to enable/disable
+    if (strncmp(t->t_props.tp_interlace, "disabled", 8) == 0) {
+        dec_frame = (const uint8_t * const*) vs->vid_dec_frame->data;
+        memcpy(dec_frame_linesize, vs->vid_dec_frame->linesize, sizeof (vs->vid_dec_frame->linesize));
+        tvhinfo("transcode", "%04X: Deinterlace disabled", shortid(t));
+    } else {
+        len = avpicture_get_size(ictx->pix_fmt, ictx->width, ictx->height);
+        deint = av_malloc(len);
+
+        avpicture_fill(&deint_pic,
+                deint,
+                ictx->pix_fmt,
+                ictx->width,
+                ictx->height);
+
+        if (avpicture_deinterlace(&deint_pic,
+                (AVPicture *) vs->vid_dec_frame,
+                ictx->pix_fmt,
+                ictx->width,
+                ictx->height) < 0) {
+            tvherror("transcode", "%04X: Cannot deinterlace frame", shortid(t));
+            transcoder_stream_invalidate(ts);
+            goto cleanup;
+        }
+        tvhinfo("transcode", "%04X: Deinterlace frame", shortid(t));
+        dec_frame = (const uint8_t * const*) deint_pic.data;
+        memcpy(dec_frame_linesize, deint_pic.linesize, sizeof (deint_pic.linesize));
+    }
+
+    if (strncmp(t->t_props.tp_mresolution, "default", 7) == 0) {
+        // no rescale
+        if (sws_scale(vs->vid_scaler,
+                //(const uint8_t * const*) deint_pic.data,deint_pic.linesize,
+                dec_frame, dec_frame_linesize,
+                0,
+                ictx->height,
+                vs->vid_enc_frame->data,
+                vs->vid_enc_frame->linesize) < 0) {
+            tvherror("transcode", "%04X: Cannot scale frame", shortid(t));
+            transcoder_stream_invalidate(ts);
+            goto cleanup;
+        }
+    } else {
+        // rescale
+        if (sws_scale(vs->vid_scaler,
+                //(const uint8_t * const*) deint_pic.data,deint_pic.linesize,
+                dec_frame, dec_frame_linesize,
+                0,
+                ictx->height,
+                vs->vid_enc_frame->data,
+                vs->vid_enc_frame->linesize) < 0) {
+            tvherror("transcode", "%04X: Cannot scale frame", shortid(t));
+            transcoder_stream_invalidate(ts);
+            goto cleanup;
+        }
     }
 
     vs->vid_enc_frame->pkt_pts = vs->vid_dec_frame->pkt_pts;
@@ -1268,6 +1296,7 @@ transcoder_stream_video(transcoder_t *t, transcoder_stream_t *ts, th_pkt_t *pkt)
         vs->vid_enc_frame->pts = vs->vid_dec_frame->pts;
 
     ret = avcodec_encode_video2(octx, &packet2, vs->vid_enc_frame, &got_output);
+
     if (ret < 0) {
         tvherror("transcode", "%04X: Error encoding frame", shortid(t));
         transcoder_stream_invalidate(ts);
@@ -1278,6 +1307,7 @@ transcoder_stream_video(transcoder_t *t, transcoder_stream_t *ts, th_pkt_t *pkt)
         send_video_packet(t, ts, pkt, &packet2, octx);
 
 cleanup:
+
     if (got_ref)
         av_frame_unref(vs->vid_dec_frame);
 
