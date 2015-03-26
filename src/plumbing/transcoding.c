@@ -925,6 +925,7 @@ transcoder_stream_video(transcoder_t *t, transcoder_stream_t *ts, th_pkt_t *pkt)
     th_pkt_t *pkt2;
     const uint8_t * const* dec_frame;
     int dec_frame_linesize[AV_NUM_DATA_POINTERS];
+    size_t framesize;
 
     av_init_packet(&packet);
     av_init_packet(&packet2);
@@ -1232,6 +1233,7 @@ transcoder_stream_video(transcoder_t *t, transcoder_stream_t *ts, th_pkt_t *pkt)
     // Set Interlace to enable/disable
     if (strncmp(t->t_props.tp_interlace, "disabled", 8) == 0) {
         dec_frame = (const uint8_t * const*) vs->vid_dec_frame->data;
+        framesize = sizeof(vs->vid_dec_frame->data);
         memcpy(dec_frame_linesize, vs->vid_dec_frame->linesize, sizeof (vs->vid_dec_frame->linesize));
         tvhinfo("transcode", "%04X: Deinterlace disabled", shortid(t));
     } else {
@@ -1255,22 +1257,15 @@ transcoder_stream_video(transcoder_t *t, transcoder_stream_t *ts, th_pkt_t *pkt)
         }
         tvhinfo("transcode", "%04X: Deinterlace frame", shortid(t));
         dec_frame = (const uint8_t * const*) deint_pic.data;
+        framesize = sizeof(deint_pic.data);
         memcpy(dec_frame_linesize, deint_pic.linesize, sizeof (deint_pic.linesize));
     }
 
-    if (strncmp(t->t_props.tp_mresolution, "default", 7) == 0) {
+    // default resolution, no auto set
+    if (strncmp(t->t_props.tp_mresolution, "default", 7) == 0 && t->t_props.tp_resolution==0) {
         // no rescale
-        if (sws_scale(vs->vid_scaler,
-                //(const uint8_t * const*) deint_pic.data,deint_pic.linesize,
-                dec_frame, dec_frame_linesize,
-                0,
-                ictx->height,
-                vs->vid_enc_frame->data,
-                vs->vid_enc_frame->linesize) < 0) {
-            tvherror("transcode", "%04X: Cannot scale frame", shortid(t));
-            transcoder_stream_invalidate(ts);
-            goto cleanup;
-        }
+        memcpy(vs->vid_enc_frame->data, dec_frame, framesize);
+        memcpy(vs->vid_enc_frame->linesize, dec_frame_linesize, sizeof (dec_frame_linesize));
     } else {
         // rescale
         if (sws_scale(vs->vid_scaler,
