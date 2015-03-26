@@ -1546,6 +1546,12 @@ transcoder_init_audio(transcoder_t *t, streaming_start_component_t *ssc) {
     as->aud_ictx->thread_count =
             as->aud_octx->thread_count = transcoder_thread_count(t, sct);
 
+    if (t->t_props.tp_threads > 0) {
+        as->aud_octx->thread_count = t->t_props.tp_threads;
+    }
+    
+    tvhinfo("transcode", "%04X: Audio threads set %u", shortid(t), as->aud_ictx->thread_count);
+
     LIST_INSERT_HEAD(&t->t_stream_list, (transcoder_stream_t*) as, ts_link);
 
     tvhinfo("transcode", "%04X: %d:%s ==> %s (%s)",
@@ -1640,6 +1646,12 @@ transcoder_init_video(transcoder_t *t, streaming_start_component_t *ssc) {
 
     vs->vid_ictx->thread_count =
             vs->vid_octx->thread_count = transcoder_thread_count(t, sct);
+
+    if (t->t_props.tp_threads > 0) {
+        vs->vid_ictx->thread_count = t->t_props.tp_threads;
+    }
+
+    tvhinfo("transcode", "%04X: Video threads set %u", shortid(t), vs->vid_ictx->thread_count);
 
     vs->vid_dec_frame = avcodec_alloc_frame();
     vs->vid_enc_frame = avcodec_alloc_frame();
